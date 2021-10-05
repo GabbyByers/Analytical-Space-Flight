@@ -7,7 +7,7 @@ White = (255,255,255)
 Label_White = (150,150,150)
 Debug_White = (200,200,200)
 Black = (0,0,0)
-Back_Drop = (0,0,26)
+Back_Drop = (0,0,30)
 Gray = (150,150,150)
 Orbit_Gray = (60,60,60)
 Moon_Gray = (100,100,110)
@@ -21,8 +21,6 @@ Gold = (255,215,0)
 font = pygame.font.SysFont('courier', 20, False)
 key_font = pygame.font.SysFont('courier', 16, False)
 label_font = pygame.font.SysFont('courier', 20, False)
-
-I have made an edit here
 
 class angle:
     def __init__(self, radians):
@@ -47,7 +45,6 @@ class box:
         self.height = height
 
 #System Variables
-Toggle_Stars = True
 Debug_Toggle = True
 Label_Toggle = True
 Vector_Toggle = True
@@ -55,7 +52,7 @@ pi = 3.141592653589793
 G = 6.67408*10**-11
 GlobalX,GlobalY = 0,0
 Iterations = 200
-Angular_Momentum,Angular_Impulse = 0,0.01
+Angular_Momentum,Angular_Impulse = 0,0.013
 TimeWarp_Maximum = 9
 TimeWarp_Value = 1
 TimeWarp = 10**(TimeWarp_Value-1)
@@ -78,7 +75,7 @@ Sphere_Influence_Radius = 66100000
 Dist_Earth = 10000000
 Dist_Moon = 0
 Velocity = 6500
-Engine_Impulse = 200
+Engine_Impulse = 400
 
 #Base Angles
 Earth_TO_Ship = angle(1)
@@ -150,9 +147,9 @@ def drawNavigation():
 def drawRocket():
     if not Minimized:
         pygame.draw.lines(win, White, True, rotateScaleTranslateList(RocketPolygon), 1)
-        if Accelerating:
-            PlumePolygon = [(-10.5,-1.7),(-10.5,1.7)]
-            x0 = -15 + (2*random.randrange(1000)/1000)
+        if Accelerating and not (Throttle == 0):
+            PlumePolygon = [(-10,-1.7),(-10,1.7)]
+            x0 = -10.5 - ((1+Throttle)*random.randrange(1000)/1000) - (Throttle*Throttle_DrawRange)
             PlumePolygon.append((x0,0))
             pygame.draw.lines(win, White, True, rotateScaleTranslateList(PlumePolygon), 1)
 
@@ -210,7 +207,7 @@ def userControls():
             GlobalY += Mouse_RelY
         if MouseScroll:
             System_Scale = System_Scale * (1+Mouse_RelY/1000)
-    if TimeWarp == 1 and (Vector_Toggle or not Minimized):
+    if TimeWarp == 1 and ((Vector_Toggle and Debug_Toggle) or not Minimized):
         if keys[pygame.K_a]:
             Angular_Momentum += -Angular_Impulse*SPF
             Turning_Left = True
@@ -241,126 +238,9 @@ def timeWarp():
     text = font.render("x"+str(TimeWarp), 1, White)
     win.blit(text, (TimeWarp_Maximum*25+15, 10))
 
-def pixelValues():
-    global Pixel_Ship_X,Pixel_Ship_Y,Pixel_Vel_X,Pixel_Vel_Y,Pixel_Impulse_X,Pixel_Impulse_Y,Pixel_Radius_Sphere_Influence
-    global Pixel_Earth_X,Pixel_Earth_Y,Pixel_Radius_Earth,Pixel_Moon_X,Pixel_Moon_Y,Pixel_Radius_Moon,Pixel_Orbital_Radius_Moon
-    #Ship
-    Pixel_Ship_X = DisplayX//2 + GlobalX
-    Pixel_Ship_Y = DisplayY//2 + GlobalY
-    #Earth
-    Pixel_Earth_X = Pixel_Ship_X+math.cos(Ship_TO_Earth.radians)*Dist_Earth*System_Scale
-    Pixel_Earth_Y = Pixel_Ship_Y+math.sin(Ship_TO_Earth.radians)*Dist_Earth*System_Scale
-    Pixel_Radius_Earth = Radius_Earth*System_Scale
-    if Pixel_Radius_Earth < 1:
-        Pixel_Radius_Earth = 1
-    #Moon
-    Pixel_Moon_X = Pixel_Earth_X+math.cos(Earth_TO_Moon.radians)*Orbital_Radius_Moon*System_Scale
-    Pixel_Moon_Y = Pixel_Earth_Y+math.sin(Earth_TO_Moon.radians)*Orbital_Radius_Moon*System_Scale
-    Pixel_Radius_Moon = Radius_Moon*System_Scale
-    Pixel_Radius_Sphere_Influence = Sphere_Influence_Radius*System_Scale
-    if Pixel_Radius_Moon < 1:
-        Pixel_Radius_Moon = 1
-    Pixel_Orbital_Radius_Moon = Orbital_Radius_Moon*System_Scale
-    #Debug
-    Pixel_Vel_X = Pixel_Ship_X+math.cos(X_TO_Vel.radians)*Velocity*0.02
-    Pixel_Vel_Y = Pixel_Ship_Y+math.sin(X_TO_Vel.radians)*Velocity*0.02
-    Pixel_Impulse_X = Pixel_Vel_X + math.cos(X_TO_Impulse.radians)*40
-    Pixel_Impulse_Y = Pixel_Vel_Y + math.sin(X_TO_Impulse.radians)*40
-
-def drawPlanets():
-    pygame.draw.circle(win, White, (round(Pixel_Ship_X),round(Pixel_Ship_Y)), 2)
-    pygame.draw.circle(win, Blue, (round(Pixel_Earth_X),round(Pixel_Earth_Y)), round(Pixel_Radius_Earth))
-    pygame.draw.circle(win, Orbit_Gray, (round(Pixel_Earth_X),round(Pixel_Earth_Y)), round(Pixel_Orbital_Radius_Moon), 1)
-    pygame.draw.circle(win, Moon_Gray, (round(Pixel_Moon_X),round(Pixel_Moon_Y)), round(Pixel_Radius_Moon))
-    pygame.draw.circle(win, Orbit_Gray, (round(Pixel_Moon_X),round(Pixel_Moon_Y)), round(Pixel_Radius_Sphere_Influence), 1)
-
-def drawFPS():
-    global FPS
-    fps_t = font.render("FPS/UPS: "+str(round(FPS)), 1, White)
-    win.blit(fps_t, (DisplayX-146,0))
-    spf_t = font.render("Sec/Frame: "+str(round(SPF,5)), 1, White)
-    win.blit(spf_t, (DisplayX-216,20))
-
-def drawLabel(width, margin, center, name, offset):
-    x = center[0]
-    y = center[1]
-    p1 = [(x-width,y-width+margin),(x-width,y-width),(x-width+margin,y-width)]
-    p2 = [(x-width,y+width-margin),(x-width,y+width),(x-width+margin,y+width)]
-    p3 = [(x+width-margin,y+width),(x+width,y+width),(x+width,y+width-margin)]
-    p4 = [(x+width,y-width+margin),(x+width,y-width),(x+width-margin,y-width)]
-    pygame.draw.lines(win, Label_White, False, p1, 1)
-    pygame.draw.lines(win, Label_White, False, p2, 1)
-    pygame.draw.lines(win, Label_White, False, p3, 1)
-    pygame.draw.lines(win, Label_White, False, p4, 1)
-    t1 = label_font.render(name, 1, White)
-    win.blit(t1, (x+width+10+offset, y-width+5))
-
-def drawKey(string, vert_offset):
-    text = key_font.render(string, 1, White)
-    win.blit(text, (10,802+(vert_offset*15)))
-
-def drawDebug():
-    t0  = font.render("--- Stats For Nerds ---", 1, White)
-    t1  = font.render("Velocity: "+str(round(Velocity,5)), 1, White)
-    t2  = font.render("Apoapsis: "+str(round(Apoapsis,5)), 1, White)
-    t3  = font.render("Periapsis: "+str(round(Periapsis,5)), 1, White)
-    t4  = font.render("Semi Major Axis: "+str(round(Semi_Major_Axis,5)), 1, White)
-    t5  = font.render("Semi Minor Axis: "+str(round(Semi_Minor_Axis,5)), 1, White)
-    t6  = font.render("Distance To Earth: "+str(round(Dist_Earth,3)), 1, White)
-    t7  = font.render("Distance To Moon: "+str(round(Dist_Moon,3)), 1, White)
-    t8  = font.render("Eccentricity: "+str(round(Eccentricity,5)), 1, White)
-    t9  = font.render("True Anomaly: "+str(round(True_Anomaly.radians,5)), 1, White)
-    t10 = font.render("Global X: "+str(round(GlobalX,5)), 1, White)
-    t11 = font.render("Global Y: "+str(round(GlobalY,5)), 1, White)
-    t12 = font.render("EarthShip_TO_Vel(Y): "+str(round(EarthShip_TO_Vel.radians,5)), 1, White)
-    t13 = font.render("Earth_TO_Ship: "+str(round(Earth_TO_Ship.radians,5)), 1, White)
-    t14 = font.render("Moon_TO_Ship: "+str(round(Moon_TO_Ship.radians,5)), 1, White)
-    t15 = font.render("Ship_TO_Earth: "+str(round(Ship_TO_Earth.radians,5)), 1, White)
-    t16 = font.render("Ship_TO_Moon: "+str(round(Ship_TO_Moon.radians,5)), 1, White)
-    t17 = font.render("Earth_TO_Moon: "+str(round(Earth_TO_Moon.radians,5)), 1, White)
-    t18 = font.render("Moon_TO_Earth: "+str(round(Moon_TO_Earth.radians,5)), 1, White)
-    t19 = font.render("X_TO_Impulse: "+str(round(X_TO_Impulse.radians,5)), 1, White)
-    t20 = font.render("Vel_TO_Impulse: "+str(round(Vel_TO_Impulse.radians,5)), 1, White)
-    t21 = font.render("Impulse_TO_Vel: "+str(round(Impulse_TO_Vel.radians,5)), 1, White)
-    t22 = font.render("Delta V Used: "+str(round(DeltaV_Consumed, 3)), 1, White)
-    
-    x = 1000
-    y = 150
-    win.blit(t0,  (x, y+30*0))
-    win.blit(t1,  (x, y+30*1))
-    win.blit(t2,  (x, y+30*2))
-    win.blit(t3,  (x, y+30*3))
-    win.blit(t4,  (x, y+30*4))
-    win.blit(t5,  (x, y+30*5))
-    win.blit(t6,  (x, y+30*6))
-    win.blit(t7,  (x, y+30*7))
-    win.blit(t8,  (x, y+30*8))
-    win.blit(t9,  (x, y+30*9))
-    win.blit(t10, (x, y+30*10))
-    win.blit(t11, (x, y+30*11))
-    win.blit(t12, (x, y+30*12))
-    win.blit(t13, (x, y+30*13))
-    win.blit(t14, (x, y+30*14))
-    win.blit(t15, (x, y+30*15))
-    win.blit(t16, (x, y+30*16))
-    win.blit(t17, (x, y+30*17))
-    win.blit(t18, (x, y+30*18))
-    win.blit(t19, (x, y+30*19))
-    win.blit(t20, (x, y+30*20))
-    win.blit(t21, (x, y+30*21))
-    win.blit(t22, (x, y+30*22))
-    
-def drawVectors():
-    pygame.draw.line(win, Red, (Pixel_Vel_X,Pixel_Vel_Y), (Pixel_Impulse_X,Pixel_Impulse_Y), 1)
-    if Sphere_Influence == "Earth":
-        pygame.draw.line(win, Debug_White, (Pixel_Earth_X, Pixel_Earth_Y), (Pixel_Ship_X, Pixel_Ship_Y), 1)
-    if Sphere_Influence == "Moon":
-        pygame.draw.line(win, Debug_White, (Pixel_Moon_X, Pixel_Moon_Y), (Pixel_Ship_X, Pixel_Ship_Y), 1)
-    pygame.draw.line(win, Debug_White, (Pixel_Ship_X,Pixel_Ship_Y), (Pixel_Vel_X,Pixel_Vel_Y), 1)
-
 def simulateImpulse():
     global Velocity, DeltaV_Consumed
-    dV = Engine_Impulse*SPF
+    dV = Engine_Impulse*SPF*Throttle
     DeltaV_Consumed += dV
     New_Velocity = math.sqrt(Velocity**2+dV**2+-2*Velocity*dV*math.cos(Impulse_TO_Vel.radians))
     arccos_arg = (Velocity**2+New_Velocity**2-dV**2)/(2*Velocity*New_Velocity)
@@ -545,6 +425,145 @@ def traverseOrbit():
             X_TO_Vel.radians = Moon_TO_Ship.radians + (pi/2) - Phi
         X_TO_Vel.normalize()
 
+def checkSphereInfluence():
+    global Sphere_Influence
+    if (Dist_Moon < Sphere_Influence_Radius) and (Sphere_Influence == "Earth"):
+        Sphere_Influence = "Moon"
+        correctRelativeVelocity("sub")
+        derivedAngles()
+        calculateOrbit()
+    elif (Dist_Moon > Sphere_Influence_Radius) and (Sphere_Influence == "Moon"):
+        Sphere_Influence = "Earth"
+        correctRelativeVelocity("add")
+        derivedAngles()
+        calculateOrbit()
+
+def correctRelativeVelocity(toggle):
+    global Velocity
+    X_TO_MoonVel.radians = Earth_TO_Moon.radians + pi/2
+    if toggle == "sub":
+        ShipVel_TO_MoonVel.radians = X_TO_MoonVel.radians - X_TO_Vel.radians
+    if toggle == "add":
+        ShipVel_TO_MoonVel.radians = X_TO_MoonVel.radians - X_TO_Vel.radians + pi
+    ShipVel_TO_MoonVel.normalize()
+    Gamma = pi - ShipVel_TO_MoonVel.radians
+    New_Velocity = math.sqrt(Velocity**2+Velocity_Moon**2+-2*Velocity*Velocity_Moon*math.cos(Gamma))
+    Delta_X_TO_Vel = math.acos((Velocity**2+New_Velocity**2-Velocity_Moon**2)/(2*Velocity*New_Velocity))
+    if ShipVel_TO_MoonVel.radians < 0:
+        X_TO_Vel.radians -= Delta_X_TO_Vel
+    elif ShipVel_TO_MoonVel.radians > 0:
+        X_TO_Vel.radians += Delta_X_TO_Vel
+    Velocity = New_Velocity
+
+def pixelValues():
+    global Pixel_Ship_X,Pixel_Ship_Y,Pixel_Vel_X,Pixel_Vel_Y,Pixel_Impulse_X,Pixel_Impulse_Y,Pixel_Radius_Sphere_Influence
+    global Pixel_Earth_X,Pixel_Earth_Y,Pixel_Radius_Earth,Pixel_Moon_X,Pixel_Moon_Y,Pixel_Radius_Moon,Pixel_Orbital_Radius_Moon
+    #Ship
+    Pixel_Ship_X = DisplayX//2 + GlobalX
+    Pixel_Ship_Y = DisplayY//2 + GlobalY
+    #Earth
+    Pixel_Earth_X = Pixel_Ship_X+math.cos(Ship_TO_Earth.radians)*Dist_Earth*System_Scale
+    Pixel_Earth_Y = Pixel_Ship_Y+math.sin(Ship_TO_Earth.radians)*Dist_Earth*System_Scale
+    Pixel_Radius_Earth = Radius_Earth*System_Scale
+    if Pixel_Radius_Earth < 1:
+        Pixel_Radius_Earth = 1
+    #Moon
+    Pixel_Moon_X = Pixel_Earth_X+math.cos(Earth_TO_Moon.radians)*Orbital_Radius_Moon*System_Scale
+    Pixel_Moon_Y = Pixel_Earth_Y+math.sin(Earth_TO_Moon.radians)*Orbital_Radius_Moon*System_Scale
+    Pixel_Radius_Moon = Radius_Moon*System_Scale
+    Pixel_Radius_Sphere_Influence = Sphere_Influence_Radius*System_Scale
+    if Pixel_Radius_Moon < 1:
+        Pixel_Radius_Moon = 1
+    Pixel_Orbital_Radius_Moon = Orbital_Radius_Moon*System_Scale
+    #Debug
+    Pixel_Vel_X = Pixel_Ship_X+math.cos(X_TO_Vel.radians)*Velocity*0.02
+    Pixel_Vel_Y = Pixel_Ship_Y+math.sin(X_TO_Vel.radians)*Velocity*0.02
+    Pixel_Impulse_X = Pixel_Vel_X + math.cos(X_TO_Impulse.radians)*40
+    Pixel_Impulse_Y = Pixel_Vel_Y + math.sin(X_TO_Impulse.radians)*40
+
+def drawPlanets():
+    pygame.draw.circle(win, White, (round(Pixel_Ship_X),round(Pixel_Ship_Y)), 2)
+    pygame.draw.circle(win, Blue, (round(Pixel_Earth_X),round(Pixel_Earth_Y)), round(Pixel_Radius_Earth))
+    pygame.draw.circle(win, Orbit_Gray, (round(Pixel_Earth_X),round(Pixel_Earth_Y)), round(Pixel_Orbital_Radius_Moon), 1)
+    pygame.draw.circle(win, Moon_Gray, (round(Pixel_Moon_X),round(Pixel_Moon_Y)), round(Pixel_Radius_Moon))
+    pygame.draw.circle(win, Orbit_Gray, (round(Pixel_Moon_X),round(Pixel_Moon_Y)), round(Pixel_Radius_Sphere_Influence), 1)
+
+def drawFPS():
+    global FPS
+    fps_t = font.render("FPS/UPS: "+str(round(FPS)), 1, White)
+    win.blit(fps_t, (DisplayX-146,0))
+    spf_t = font.render("Sec/Frame: "+str(round(SPF,5)), 1, White)
+    win.blit(spf_t, (DisplayX-216,20))
+
+def drawLabel(width, margin, center, name, offset):
+    x = center[0]
+    y = center[1]
+    p1 = [(x-width,y-width+margin),(x-width,y-width),(x-width+margin,y-width)]
+    p2 = [(x-width,y+width-margin),(x-width,y+width),(x-width+margin,y+width)]
+    p3 = [(x+width-margin,y+width),(x+width,y+width),(x+width,y+width-margin)]
+    p4 = [(x+width,y-width+margin),(x+width,y-width),(x+width-margin,y-width)]
+    pygame.draw.lines(win, Label_White, False, p1, 1)
+    pygame.draw.lines(win, Label_White, False, p2, 1)
+    pygame.draw.lines(win, Label_White, False, p3, 1)
+    pygame.draw.lines(win, Label_White, False, p4, 1)
+    t1 = label_font.render(name, 1, White)
+    win.blit(t1, (x+width+10+offset, y-width+5))
+
+def drawKey(string, vert_offset):
+    text = key_font.render(string, 1, White)
+    win.blit(text, (10,802+(vert_offset*15)))
+
+def drawDebug():
+    t0  = font.render("--- Stats For Nerds ---", 1, White)
+    t1  = font.render("Velocity: "+str(round(Velocity,5)), 1, White)
+    t2  = font.render("Apoapsis: "+str(round(Apoapsis,5)), 1, White)
+    t3  = font.render("Periapsis: "+str(round(Periapsis,5)), 1, White)
+    t4  = font.render("Semi Major Axis: "+str(round(Semi_Major_Axis,5)), 1, White)
+    t5  = font.render("Semi Minor Axis: "+str(round(Semi_Minor_Axis,5)), 1, White)
+    t6  = font.render("Distance To Earth: "+str(round(Dist_Earth,3)), 1, White)
+    t7  = font.render("Distance To Moon: "+str(round(Dist_Moon,3)), 1, White)
+    t8  = font.render("Eccentricity: "+str(round(Eccentricity,5)), 1, White)
+    t9  = font.render("True Anomaly: "+str(round(True_Anomaly.radians,5)), 1, White)
+    t10 = font.render("Global X: "+str(round(GlobalX,5)), 1, White)
+    t11 = font.render("Global Y: "+str(round(GlobalY,5)), 1, White)
+    t12 = font.render("EarthShip_TO_Vel(Y): "+str(round(EarthShip_TO_Vel.radians,5)), 1, White)
+    t13 = font.render("Earth_TO_Ship: "+str(round(Earth_TO_Ship.radians,5)), 1, White)
+    t14 = font.render("Moon_TO_Ship: "+str(round(Moon_TO_Ship.radians,5)), 1, White)
+    t15 = font.render("Ship_TO_Earth: "+str(round(Ship_TO_Earth.radians,5)), 1, White)
+    t16 = font.render("Ship_TO_Moon: "+str(round(Ship_TO_Moon.radians,5)), 1, White)
+    t17 = font.render("Earth_TO_Moon: "+str(round(Earth_TO_Moon.radians,5)), 1, White)
+    t18 = font.render("Moon_TO_Earth: "+str(round(Moon_TO_Earth.radians,5)), 1, White)
+    t19 = font.render("X_TO_Impulse: "+str(round(X_TO_Impulse.radians,5)), 1, White)
+    t20 = font.render("Vel_TO_Impulse: "+str(round(Vel_TO_Impulse.radians,5)), 1, White)
+    t21 = font.render("Impulse_TO_Vel: "+str(round(Impulse_TO_Vel.radians,5)), 1, White)
+    t22 = font.render("Delta V Used: "+str(round(DeltaV_Consumed, 3)), 1, White)
+    
+    x = 1000
+    y = 150
+    win.blit(t0,  (x, y+30*0))
+    win.blit(t1,  (x, y+30*1))
+    win.blit(t2,  (x, y+30*2))
+    win.blit(t3,  (x, y+30*3))
+    win.blit(t4,  (x, y+30*4))
+    win.blit(t5,  (x, y+30*5))
+    win.blit(t6,  (x, y+30*6))
+    win.blit(t7,  (x, y+30*7))
+    win.blit(t8,  (x, y+30*8))
+    win.blit(t9,  (x, y+30*9))
+    win.blit(t10, (x, y+30*10))
+    win.blit(t11, (x, y+30*11))
+    win.blit(t12, (x, y+30*12))
+    win.blit(t13, (x, y+30*13))
+    win.blit(t14, (x, y+30*14))
+    win.blit(t15, (x, y+30*15))
+    win.blit(t16, (x, y+30*16))
+    win.blit(t17, (x, y+30*17))
+    win.blit(t18, (x, y+30*18))
+    win.blit(t19, (x, y+30*19))
+    win.blit(t20, (x, y+30*20))
+    win.blit(t21, (x, y+30*21))
+    win.blit(t22, (x, y+30*22))
+
 def drawEllipse():
     raw = []
     for n in range(Iterations):
@@ -595,49 +614,52 @@ def drawHyperbola():
         trans = [(round(x+Pixel_Moon_X),round(y+Pixel_Moon_Y))             for (x,y) in anomaly]
     pygame.draw.lines(win, Orbit_Gray, False, trans)
 
-def checkSphereInfluence():
-    global Sphere_Influence
-    if (Dist_Moon < Sphere_Influence_Radius) and (Sphere_Influence == "Earth"):
-        Sphere_Influence = "Moon"
-        correctRelativeVelocity("sub")
-        derivedAngles()
-        calculateOrbit()
-    elif (Dist_Moon > Sphere_Influence_Radius) and (Sphere_Influence == "Moon"):
-        Sphere_Influence = "Earth"
-        correctRelativeVelocity("add")
-        derivedAngles()
-        calculateOrbit()
+def drawVectors():
+    if Debug_Toggle:
+        pygame.draw.line(win, Red, (Pixel_Vel_X,Pixel_Vel_Y), (Pixel_Impulse_X,Pixel_Impulse_Y), 1)
+    if Sphere_Influence == "Earth":
+        pygame.draw.line(win, Debug_White, (Pixel_Earth_X, Pixel_Earth_Y), (Pixel_Ship_X, Pixel_Ship_Y), 1)
+    if Sphere_Influence == "Moon":
+        pygame.draw.line(win, Debug_White, (Pixel_Moon_X, Pixel_Moon_Y), (Pixel_Ship_X, Pixel_Ship_Y), 1)
+    pygame.draw.line(win, Debug_White, (Pixel_Ship_X,Pixel_Ship_Y), (Pixel_Vel_X,Pixel_Vel_Y), 1)
 
-def correctRelativeVelocity(toggle):
-    global Velocity
-    X_TO_MoonVel.radians = Earth_TO_Moon.radians + pi/2
-    if toggle == "sub":
-        ShipVel_TO_MoonVel.radians = X_TO_MoonVel.radians - X_TO_Vel.radians
-    if toggle == "add":
-        ShipVel_TO_MoonVel.radians = X_TO_MoonVel.radians - X_TO_Vel.radians + pi
-    ShipVel_TO_MoonVel.normalize()
-    Gamma = pi - ShipVel_TO_MoonVel.radians
-    New_Velocity = math.sqrt(Velocity**2+Velocity_Moon**2+-2*Velocity*Velocity_Moon*math.cos(Gamma))
-    Delta_X_TO_Vel = math.acos((Velocity**2+New_Velocity**2-Velocity_Moon**2)/(2*Velocity*New_Velocity))
-    if ShipVel_TO_MoonVel.radians < 0:
-        X_TO_Vel.radians -= Delta_X_TO_Vel
-    elif ShipVel_TO_MoonVel.radians > 0:
-        X_TO_Vel.radians += Delta_X_TO_Vel
-    Velocity = New_Velocity
-
-Star_Population = 200
+Star_Population = 1600
 def initializeStars():
     global Stars
     Stars = []
+    colour_range = 180
     for n in range(Star_Population):
         x = random.randrange(DisplayX)
         y = random.randrange(DisplayY)
-        colour = (200,200,200)
+        r = random.randrange(colour_range)
+        b = colour_range-r
+        colour = ((255-colour_range)+r,(255-colour_range),(255-colour_range)+b)#IT'S MY PROJECT AND I GET TO DECIDE THE STARS ARE BISEXUAL
         Stars.append((x,y,colour))
 
 def drawStars():
     for n in range(len(Stars)):
         pygame.gfxdraw.pixel(win, Stars[n][0], Stars[n][1], Stars[n][2])
+
+#Throttle
+Throttle = 0.5
+Throttle_DrawRange = 6
+Margin = 5
+Throttle_Rect = box(15,425,25,320)
+Throttle_Bar  = box(Throttle_Rect.x+Margin,Throttle_Rect.y+Margin,Throttle_Rect.width-(Margin*2),Throttle_Rect.height-(Margin*2))
+def drawThrottle():
+    global Throttle, Throttle_DrawRange
+    if keys[pygame.K_LSHIFT]:
+        Throttle += 0.002
+    if keys[pygame.K_LCTRL]:
+        Throttle -= 0.002
+    if Throttle > 1:
+        Throttle = 1
+    if Throttle < 0:
+        Throttle = 0
+    height = round(Throttle_Bar.height*Throttle)
+    vert_offset = Throttle_Bar.height-height
+    pygame.draw.rect(win, White, (Throttle_Rect.x,Throttle_Rect.y,Throttle_Rect.width,Throttle_Rect.height), 1)
+    pygame.draw.rect(win, Green, (Throttle_Bar.x,Throttle_Bar.y+vert_offset,Throttle_Bar.width,height))
 
 #Initialize
 run = True
@@ -697,11 +719,12 @@ while run == True:
                     Vector_Toggle = False
                 elif not Vector_Toggle:
                     Vector_Toggle = True
-            if event.key == pygame.K_h:
-                if Toggle_Stars:
-                    Toggle_Stars = False
-                elif not Toggle_Stars:
-                    Toggle_Stars = True
+            if event.key == pygame.K_z:
+                Throttle = 1.0
+            if event.key == pygame.K_x:
+                Throttle = 0.0
+            if event.key == pygame.K_c:
+                Throttle = 0.5
 
     #Calculate
     checkSphereInfluence()
@@ -716,8 +739,7 @@ while run == True:
     derivedAngles()
 
     #Draw
-    if Toggle_Stars:
-        drawStars()
+    drawStars()
     pixelValues()
     if Eccentricity < 1:
         drawEllipse()
@@ -734,12 +756,17 @@ while run == True:
         drawLabel(Label_Size, 5, (Pixel_Moon_X,  Pixel_Moon_Y),  "The Moon", 0 if Label_Size > Pixel_Radius_Moon else Pixel_Radius_Moon-Label_Size)
     timeWarp()
     drawFPS()
-    drawKey("Control Spaceship With W A S D",0)
-    drawKey("Press 'L' to Toggle Labels",1)
-    drawKey("Press 'K' to Toggle Vectors",2)
-    drawKey("Press 'J' to Toggle Debug Information",3)
-    drawKey("Press 'H' to Toggle Stars",4)
-    drawKey("Press '`' to Reset Position of The Spaceship On Screen",5)
+    drawThrottle()
+
+    drawKey("THROTTLE: %"+str(round(Throttle*100)),-3.25)
+    drawKey("Adjust Throttle With 'Z','X','C','SHIFT',&'CTRL'",-2)
+    drawKey("Press 'L' to Toggle Labels",-1)
+    drawKey("Press 'J' to Toggle Vectors",0)
+    drawKey("Press 'K' to Toggle Debug Information",1)
+    drawKey("Press '~' to Reset Position of The Spaceship On The Screen",2)
+    drawKey("Control Timewarp With The '<' and '>' Keys",3)
+    drawKey("Control The Spaceship With W A S D",4)
+    drawKey("Press Mouse Wheel and Pan Up/Down to Zoom Out/In",5)
 
     #Navigation
     panNavigation()
@@ -758,16 +785,6 @@ while run == True:
         FPS_counter = 0
         start_time = time.time()
 pygame.quit()
-
-
-
-
-
-
-
-
-
-
 
 
 
