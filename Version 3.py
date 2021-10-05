@@ -22,6 +22,8 @@ font = pygame.font.SysFont('courier', 20, False)
 key_font = pygame.font.SysFont('courier', 16, False)
 label_font = pygame.font.SysFont('courier', 20, False)
 
+I have made an edit here
+
 class angle:
     def __init__(self, radians):
         self.radians = radians
